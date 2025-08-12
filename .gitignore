@@ -1,0 +1,6 @@
+.env
+*.ipynb
+data/
+*.code-workspace
+__pycache__/
+artifacts/
