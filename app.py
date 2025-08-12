@@ -38,7 +38,7 @@ def main():
             download_creditcard_data()
             
     if not os.path.exists(MODEL_PATH):
-        with st.spinner("Model artifact not found. Training and serializing..."):
+        with st.spinner("Model artifacts not found. Training and serializing..."):
             train_and_serialize()
     
     if len(st.session_state['live_data']) < LIMIT:
