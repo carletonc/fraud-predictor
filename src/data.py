@@ -18,7 +18,7 @@ def download_creditcard_data():
     
     kaggle.api.dataset_download_files(
         'mlg-ulb/creditcardfraud', 
-        path=output_path, 
+        path=DATA_DIR, 
         unzip=True,
     )
     return 
