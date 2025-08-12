@@ -3,25 +3,25 @@ import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
 
-from src.constants import TRAIN_DATA_PATH, FRAUD_STATS, NON_FRAUD_STATS 
+from src.constants import DATA_DIR, TRAIN_DATA_PATH, FRAUD_STATS, NON_FRAUD_STATS 
 
 
 
-def download_creditcard_data(output_path='data/raw'):
+def download_creditcard_data():
     """Download the credit card fraud dataset from Kaggle using .env credentials."""
     # Load environment variables from .env file
     load_dotenv()
     # Authenticate and download
     import kaggle
     kaggle.api.authenticate()
-    os.makedirs(output_path, exist_ok=True)
+    os.makedirs(DATA_DIR, exist_ok=True)
     
     kaggle.api.dataset_download_files(
         'mlg-ulb/creditcardfraud', 
         path=output_path, 
         unzip=True,
     )
-    return os.path.join(output_path, 'creditcard.csv')
+    return 
 
 
 def get_random_fraud_rate(base_rate=0.001727, scale=10000):

@@ -1,6 +1,8 @@
 
 SEED = 42
+DATA_DIR = 'data/raw'
 TRAIN_DATA_PATH = 'data/raw/creditcard.csv'
+ARTIFACTS_DIR = 'artifacts'
 SCALER_PATH = 'artifacts/scaler.pkl'
 MODEL_PATH = 'artifacts/best_xgboost_model.json'
 MODEL_METRICS_PATH = 'artifacts/test_metrics.json'

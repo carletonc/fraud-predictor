@@ -1,5 +1,6 @@
 import json
 import joblib
+import os 
 import pandas as pd
 import numpy as np
 import xgboost as xgb
@@ -10,7 +11,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score, precision_recall_curve, auc, average_precision_score, classification_report
 import matplotlib.pyplot as plt
 
-from src.constants import SEED, TRAIN_DATA_PATH, SCALER_PATH, MODEL_PATH, MODEL_METRICS_PATH
+from src.constants import SEED, TRAIN_DATA_PATH, ARTIFACTS_DIR, SCALER_PATH, MODEL_PATH, MODEL_METRICS_PATH
 
 # Static parameters (not tuned)
 STATIC_PARAMS = {
@@ -191,6 +192,7 @@ def create_visualizations(final_model, X_train_scaled, X_test_scaled, y_test, y_
     
 def save_artifacts(final_model, scaler, y_test, X_test_scaled, test_roc_auc, test_pr_auc):
     """Save model, scaler, and metrics to disk."""
+    os.makedirs(ARTIFACTS_DIR, exist_ok=True)
     # Save preprocessing and model
     joblib.dump(scaler, SCALER_PATH) 
     final_model.save_model(MODEL_PATH)
