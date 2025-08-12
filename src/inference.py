@@ -10,6 +10,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import precision_score, recall_score
 from scipy.stats import ks_2samp, wasserstein_distance, entropy
 
+from src.constants import TRAIN_DATA_PATH
 from src.data import generate_fraud_data, get_random_fraud_rate
 
 # Constants
