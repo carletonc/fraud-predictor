@@ -30,7 +30,7 @@ def header_buttons():
 
 def plot_online_metrics(limit=14):
     st.markdown("---")
-    st.subheader("Model Monitoring Over Time")
+    st.subheader("Model Monitoring")
     
     df = pd.DataFrame(
         [pd.json_normalize(metrics, sep="_").iloc[0]
@@ -148,7 +148,7 @@ def plot_online_metrics(limit=14):
 
 def plot_feature_drift(limit=14, features=['V14', 'V4', 'V7']):
     st.markdown("---")
-    st.subheader("Feature Drift Over Time")
+    st.subheader("Feature Drift")
 
     # Flatten live_feature_drift data
     df = pd.DataFrame(

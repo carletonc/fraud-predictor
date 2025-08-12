@@ -214,10 +214,24 @@ def train_and_serialize():
     X_train_scaled, X_val_scaled, X_test_scaled, y_train, y_val, y_test, scaler = load_and_preprocess_data()
     
     # Optimize hyperparameters
-    study = optimize_hyperparameters(X_train_scaled, y_train)
+    # study = optimize_hyperparameters(X_train_scaled, y_train)
+    
+    # defined by offline testing, seeded tuning will produce the same params.
+    best_params = {
+        'n_estimators': 437, 
+        'max_depth': 10, 
+        'learning_rate': 0.22227824312530747, 
+        'min_child_weight': 6, 
+        'subsample': 0.6624074561769746, 
+        'colsample_bytree': 0.662397808134481, 
+        'gamma': 0.2904180608409973, 
+        'reg_alpha': 8.661761457749352, 
+        'reg_lambda': 6.011150117432088, 
+        'scale_pos_weight': 737.2653200164409
+    }
     
     # Train final model
-    final_model = train_final_model(X_train_scaled, X_val_scaled, y_train, y_val, study.best_params)
+    final_model = train_final_model(X_train_scaled, X_val_scaled, y_train, y_val, best_params)
     
     # Evaluate model
     test_roc_auc, test_pr_auc, y_test_pred = evaluate_model(
