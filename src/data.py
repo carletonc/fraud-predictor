@@ -11,9 +11,8 @@ def download_creditcard_data(output_path='data/raw'):
     """Download the credit card fraud dataset from Kaggle using .env credentials."""
     # Load environment variables from .env file
     load_dotenv()
-    
-    import kaggle
     # Authenticate and download
+    import kaggle
     kaggle.api.authenticate()
     os.makedirs(output_path, exist_ok=True)
     
@@ -21,16 +20,8 @@ def download_creditcard_data(output_path='data/raw'):
         'mlg-ulb/creditcardfraud', 
         path=output_path, 
         unzip=True,
-        
     )
     return os.path.join(output_path, 'creditcard.csv')
-
-
-def get_creditcard_data(output_path='data/raw'):
-    """Get creditcard data, downloading if file doesn't exist."""
-    if not os.path.exists(TRAIN_DATA_PATH):
-        print("Credit card dataset not found. Downloading from Kaggle...")
-        download_creditcard_data(output_path)
 
 
 def get_random_fraud_rate(base_rate=0.001727, scale=10000):
