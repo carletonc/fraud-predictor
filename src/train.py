@@ -208,7 +208,7 @@ def save_artifacts(final_model, scaler, y_test, X_test_scaled, test_roc_auc, tes
     print("Model artifacts saved successfully!")
 
 
-def main():
+def train_and_serialize():
     """Main training pipeline."""
     # Load and preprocess data
     X_train_scaled, X_val_scaled, X_test_scaled, y_train, y_val, y_test, scaler = load_and_preprocess_data()
@@ -231,4 +231,4 @@ def main():
     save_artifacts(final_model, scaler, y_test, X_test_scaled, test_roc_auc, test_pr_auc)
 
 if __name__ == "__main__":
-    main()
+    train_and_serialize()
