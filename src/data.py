@@ -26,7 +26,7 @@ def download_creditcard_data(output_path='data/raw'):
     return os.path.join(output_path, 'creditcard.csv')
 
 
-def get_random_fraud_rate(base_rate=0.001727, scale=1000):
+def get_random_fraud_rate(base_rate=0.001727, scale=10000):
     """
     Returns a random fraud rate drawn from a beta distribution.
     
