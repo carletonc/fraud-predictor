@@ -22,7 +22,7 @@ from src.constants import SEED, THRESHOLD, TOP_FEATURES, TRAIN_DATA_PATH, SCALER
 from src.data import generate_fraud_data, get_random_fraud_rate
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def load_training_data():
     """Load training data for distribution comparison with caching.
     
@@ -48,7 +48,7 @@ def load_training_data():
     return X_train
 
 
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
 def load_model_and_scaler():
     """Load and cache the pre-trained model and scaler.
     
@@ -85,7 +85,7 @@ def predict(X):
     return y_pred 
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def calculate_drift_metrics(X_test, X_live, bins=20):
     """Calculate distribution drift metrics between reference and live datasets.
     
@@ -111,36 +111,60 @@ def calculate_drift_metrics(X_test, X_live, bins=20):
             - test_hist (list): Reference dataset histogram
             - live_hist (list): Live dataset histogram
     """
-    # Drop NaNs
-    X_test = pd.Series(X_test).dropna().values
-    X_live = pd.Series(X_live).dropna().values
+    # Convert to numpy arrays and drop NaNs more efficiently
+    if isinstance(X_test, pd.Series):
+        X_test_clean = X_test.dropna().values
+    else:
+        X_test_clean = np.asarray(X_test)
+        X_test_clean = X_test_clean[~np.isnan(X_test_clean)]
+    
+    if isinstance(X_live, pd.Series):
+        X_live_clean = X_live.dropna().values
+    else:
+        X_live_clean = np.asarray(X_live)
+        X_live_clean = X_live_clean[~np.isnan(X_live_clean)]
+        
+    # Jensen-Shannon Divergence (bounded between 0 and 1)
+    # Calculate range once for both histograms
+    min_val = min(X_test_clean.min(), X_live_clean.min())
+    max_val = max(X_test_clean.max(), X_live_clean.max())
+    hist_range = (min_val, max_val)
+
+    # Generate histograms in one call (more efficient)
+    p_hist, bin_edges = np.histogram(X_test_clean, bins=bins, range=hist_range, density=True)
+    q_hist, _ = np.histogram(X_live_clean, bins=bins, range=hist_range, density=True)
+    
+    # Normalize histograms to probabilities with vectorized operations
+    p_sum = p_hist.sum()
+    q_sum = q_hist.sum()
+
+    if p_sum == 0 or q_sum == 0:
+        return _empty_metrics_result(bins, bin_edges)
+    
+    p_prob = p_hist / p_sum
+    q_prob = q_hist / q_sum
+    
+    # Add small epsilon to avoid division by zero (vectorized)
+    eps = 1e-12
+    p_prob_safe = p_prob + eps
+    q_prob_safe = q_prob + eps
+
+    # Jensen-Shannon Divergence (vectorized)
+    m = 0.5 * (p_prob_safe + q_prob_safe)
+    jsd = 0.5 * (entropy(p_prob_safe, m) + entropy(q_prob_safe, m))
+    jsd = np.sqrt(max(0, jsd))  # Ensure non-negative before sqrt
 
     # KS Test
-    ks_stat, ks_pvalue = ks_2samp(X_test, X_live)
+    ks_stat, ks_pvalue = ks_2samp(X_test_clean, X_live_clean)
 
-    # Jensen-Shannon Divergence (bounded between 0 and 1)
-    hist_range = (min(X_test.min(), X_live.min()), max(X_test.max(), X_live.max()))
-    p_hist, bin_edges = np.histogram(X_test, bins=bins, range=hist_range, density=True)
-    q_hist, _ = np.histogram(X_live, bins=bins, range=hist_range, density=True)
-    # Normalize to probabilities
-    p_prob = p_hist / (p_hist.sum() + 1e-12)
-    q_prob = q_hist / (q_hist.sum() + 1e-12)
-    m = 0.5 * (p_prob + q_prob)
-    jsd = 0.5 * (entropy(p_prob, m) + entropy(q_prob, m))
-    jsd = np.sqrt(jsd)  # Ensure bounded [0, 1]
-
-    # Wasserstein Distance
-    wass = wasserstein_distance(X_test, X_live)
-
-    # Population Stability Index (PSI)
-    # Avoid zero counts with small epsilon
-    psi_vals = (p_prob - q_prob) * np.log((p_prob + 1e-12) / (q_prob + 1e-12))
+    # Population Stability Index (vectorized)
+    log_ratio = np.log(p_prob_safe / q_prob_safe)
+    psi_vals = (p_prob - q_prob) * log_ratio
     psi = np.sum(psi_vals)
     output =  {
         "ks_stat": ks_stat,
         "ks_pvalue": ks_pvalue,
         "jsd": jsd,
-        "wasserstein": wass,
         "psi": psi,
         "bins": bin_edges.tolist(),      # convert numpy arrays to lists for JSON friendliness
         "test_hist": p_prob.tolist(),
@@ -149,7 +173,7 @@ def calculate_drift_metrics(X_test, X_live, bins=20):
     return {k: float(v) if isinstance(v, (np.floating, float)) else v for k, v in output.items()}
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def calculate_accuracy_metrics(y_true, y_pred, test_json_path):
     """Compare online classification metrics to offline test metrics with caching.
     
