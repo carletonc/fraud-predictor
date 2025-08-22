@@ -6,6 +6,7 @@ orchestrating data download, model training, and the monitoring interface.
 """
 
 import streamlit as st
+#from streamlit_profiler import Profiler
 import os
 
 from src.constants import TRAIN_DATA_PATH, MODEL_PATH
@@ -61,3 +62,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
+    #with Profiler():
+    # put your app code here
+    #    main()
