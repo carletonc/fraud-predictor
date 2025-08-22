@@ -61,7 +61,12 @@ def main():
     plot_feature_drift(limit=LIMIT)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        st.error(f"App crashed: {e}")
+        import traceback
+        st.text(traceback.format_exc())
     
     #with Profiler():
     # put your app code here
