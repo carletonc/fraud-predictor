@@ -64,9 +64,11 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        st.error(f"App crashed: {e}")
+        #st.error(f"App crashed: {e}")
+        raise e
         import traceback
-        st.text(traceback.format_exc())
+        #st.text(traceback.format_exc())
+        print(traceback.format_exc())
     
     #with Profiler():
     # put your app code here
