@@ -52,6 +52,52 @@ def header_buttons():
         pass
 
 
+@st.cache_data
+def process_metrics_data(metrics_data, limit):
+    """Process and cache metrics data for plotting.
+    
+    Converts the nested metrics data structure into a pandas DataFrame
+    suitable for plotting. Results are cached to avoid reprocessing
+    identical data.
+    
+    Args:
+        metrics_data (list): List of metrics dictionaries from session state.
+        limit (int): Number of most recent batches to process.
+    
+    Returns:
+        pandas.DataFrame: Processed metrics data for plotting.
+    """
+    return pd.DataFrame(
+        [pd.json_normalize(metrics, sep="_").iloc[0]
+         for d in metrics_data[-limit:]
+         for metrics in d.values()],
+        index=[i for i in range(min(len(metrics_data), limit))]
+    )
+
+
+@st.cache_data
+def process_drift_data(drift_data, limit):
+    """Process and cache drift data for plotting.
+    
+    Converts the nested drift data structure into a pandas DataFrame
+    suitable for plotting. Results are cached to avoid reprocessing
+    identical data.
+    
+    Args:
+        drift_data (list): List of drift dictionaries from session state.
+        limit (int): Number of most recent batches to process.
+    
+    Returns:
+        pandas.DataFrame: Processed drift data for plotting.
+    """
+    return pd.DataFrame(
+        [pd.json_normalize(metrics, sep="_").iloc[0] 
+         for d in drift_data[-limit:] 
+         for metrics in d.values()],
+        index=[i for i in range(min(len(drift_data), limit))]
+    )
+
+
 def plot_online_metrics(limit=14):
     """Plot online model performance metrics over time.
     
@@ -68,12 +114,8 @@ def plot_online_metrics(limit=14):
     st.markdown("---")
     st.subheader("Model Monitoring")
     
-    df = pd.DataFrame(
-        [pd.json_normalize(metrics, sep="_").iloc[0]
-         for d in st.session_state['live_metrics'][-limit:]
-         for metrics in d.values()],
-        index=[i for i in range(min(len(st.session_state['live_metrics']), limit))],# [uuid for d in st.session_state['live_metrics'] for uuid in d.keys()]
-    )
+    # Use cached data processing
+    df = process_metrics_data(st.session_state['live_metrics'], limit)
     
     # Define colors for clarity and consistency
     precision_online_color = '#1f77b4'  # blue
@@ -198,13 +240,8 @@ def plot_feature_drift(limit=14):
     st.markdown("---")
     st.subheader("Feature Drift")
 
-    # Flatten live_feature_drift data
-    df = pd.DataFrame(
-        [pd.json_normalize(metrics, sep="_").iloc[0] 
-         for d in st.session_state['live_feature_drift'][-limit:] 
-         for metrics in d.values()],
-        index=[i for i in range(min(len(st.session_state['live_feature_drift']), limit))]
-    )
+    # Use cached data processing
+    df = process_drift_data(st.session_state['live_feature_drift'], limit)
 
     cols = st.columns(len(TOP_FEATURES))
     latest_idx = df.index[-1]

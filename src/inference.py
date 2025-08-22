@@ -22,12 +22,13 @@ from src.constants import SEED, THRESHOLD, TOP_FEATURES, TRAIN_DATA_PATH, SCALER
 from src.data import generate_fraud_data, get_random_fraud_rate
 
 
-def get_train_data():
-    """Load training data for distribution comparison.
+@st.cache_data
+def load_training_data():
+    """Load training data for distribution comparison with caching.
     
     Loads the credit card dataset from TRAIN_DATA_PATH and performs a three-way
     split to extract the training portion for use as a reference distribution
-    in drift detection.
+    in drift detection. Results are cached to avoid reprocessing.
     
     Returns:
         pandas.DataFrame: Training features (X_train) for distribution comparison.
@@ -47,11 +48,26 @@ def get_train_data():
     return X_train
 
 
+@st.cache_resource
+def load_model_and_scaler():
+    """Load and cache the pre-trained model and scaler.
+    
+    Loads the XGBoost model and StandardScaler from disk and caches them
+    as resources to avoid reloading on every prediction call.
+    
+    Returns:
+        tuple: (model_xgb, scaler) - The loaded model and scaler.
+    """
+    scaler = joblib.load(SCALER_PATH)
+    model_xgb = xgb.XGBClassifier()
+    model_xgb.load_model(MODEL_PATH)
+    return model_xgb, scaler
+
+
 def predict(X): 
     """Predict fraud labels for input features.
     
-    Loads the pre-trained XGBoost model and scaler, applies feature scaling,
-    and makes predictions using the configured threshold for fraud detection.
+    Uses cached model and scaler to make predictions efficiently.
     
     Args:
         X (pandas.DataFrame): Input features for prediction.
@@ -60,22 +76,23 @@ def predict(X):
         numpy.ndarray: Array of predicted labels where 1 indicates fraud
             and 0 indicates non-fraud.
     """
-    # load artifacts
-    scaler = joblib.load(SCALER_PATH) 
-    model_xgb = xgb.XGBClassifier() 
-    model_xgb.load_model(MODEL_PATH) 
+    # Use cached model and scaler
+    model_xgb, scaler = load_model_and_scaler()
+    
     # transform & predict
     X = scaler.transform(X)
     y_pred = np.where(model_xgb.predict_proba(X)[:,1] > THRESHOLD, 1, 0) 
     return y_pred 
 
 
+@st.cache_data
 def calculate_drift_metrics(X_test, X_live, bins=20):
     """Calculate distribution drift metrics between reference and live datasets.
     
     Computes multiple statistical measures to quantify the difference between
     feature distributions: Kolmogorov-Smirnov test, Jensen-Shannon Divergence,
-    Wasserstein distance, and Population Stability Index.
+    Wasserstein distance, and Population Stability Index. Results are cached
+    to avoid recomputing for identical data.
     
     Args:
         X_test (array-like): Reference dataset (e.g., test set feature column).
@@ -132,11 +149,13 @@ def calculate_drift_metrics(X_test, X_live, bins=20):
     return {k: float(v) if isinstance(v, (np.floating, float)) else v for k, v in output.items()}
 
 
+@st.cache_data
 def calculate_accuracy_metrics(y_true, y_pred, test_json_path):
-    """Compare online classification metrics to offline test metrics.
+    """Compare online classification metrics to offline test metrics with caching.
     
     Loads gold standard metrics from the test set and compares them to
     current online performance metrics, focusing on precision and recall.
+    Results are cached to avoid reprocessing identical data.
     
     Args:
         y_true (array-like): Ground truth labels (binary 0/1).
@@ -198,8 +217,8 @@ def single_run():
     # generate run ID
     run_id = uuid.uuid4()
     
-    # get train data for distribution comparison
-    X_train = get_train_data()
+    # get train data for distribution comparison (now cached)
+    X_train = load_training_data()
     
     # generate "live" data
     fraud_rate = get_random_fraud_rate()

@@ -9,6 +9,7 @@ managing data loading operations.
 import os
 import numpy as np
 import pandas as pd
+import streamlit as st
 from dotenv import load_dotenv
 
 from src.constants import DATA_DIR, TRAIN_DATA_PATH, FRAUD_STATS, NON_FRAUD_STATS 
@@ -59,24 +60,30 @@ def get_random_fraud_rate(base_rate=0.001727, scale=10000):
     return np.random.beta(alpha, beta)
 
 
-def generate_fraud_data(n_samples, fraud_rate=get_random_fraud_rate()):
+@st.cache_data(show_spinner=False)
+def generate_fraud_data(n_samples, fraud_rate=None):
     """Generate synthetic fraud detection data based on provided dataset statistics.
     
     Generates synthetic data that mimics the statistical properties of the
     original credit card fraud dataset, including feature distributions for
-    both legitimate and fraudulent transactions.
+    both legitimate and fraudulent transactions. Results are cached to avoid
+    regenerating identical data.
     
     Args:
         n_samples (int): Number of samples to generate. If None, generates a
             random number between 100,000 and 200,000.
         fraud_rate (float): Proportion of fraudulent transactions. 
-            Defaults to a random rate from get_random_fraud_rate().
+            If None, uses a random rate from get_random_fraud_rate().
     
     Returns:
         pandas.DataFrame: Generated data with V1-V28 features, Amount, and Fraud
             label column. The data is shuffled and includes both legitimate (0)
             and fraudulent (1) transactions.
     """
+    # If fraud_rate is None, generate a random one (this won't be cached)
+    if fraud_rate is None:
+        fraud_rate = get_random_fraud_rate()
+    
     # If n_samples is None, randomly generate a sample size
     if n_samples is None:
         n_samples = np.random.randint(100000, 200001)  # Random number
