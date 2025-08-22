@@ -92,44 +92,42 @@ def generate_fraud_data(n_samples, fraud_rate=None):
     n_fraud = int(n_samples * fraud_rate)
     n_legit = n_samples - n_fraud
     
-    # Generate data
-    data = []
+    # Pre-allocate arrays for better memory efficiency
+    all_features = list(NON_FRAUD_STATS.keys())  # Assuming same features in both stats
+    n_features = len(all_features)
+    
+    # Generate all data at once using vectorized operations
+    data = np.empty((n_samples, n_features + 1))  # +1 for Fraud column
     
     # Generate legitimate transactions
-    for i in range(n_legit):
-        row = {}
-        for feature in NON_FRAUD_STATS:
-            row[feature] = np.random.normal(
+    if n_legit > 0:
+        for i, feature in enumerate(all_features):
+            data[:n_legit, i] = np.random.normal(
                 NON_FRAUD_STATS[feature]['mean'], 
-                NON_FRAUD_STATS[feature]['std']
+                NON_FRAUD_STATS[feature]['std'],
+                size=n_legit
             )
-        row['Fraud'] = 0 # synthetic feedback mechanism
-        data.append(row)
+        data[:n_legit, -1] = 0  # Fraud labels
     
     # Generate fraudulent transactions
-    for i in range(n_fraud):
-        row = {}
-        for feature in FRAUD_STATS:
-            row[feature] = np.random.normal(
+    if n_fraud > 0:
+        for i, feature in enumerate(all_features):
+            data[n_legit:, i] = np.random.normal(
                 FRAUD_STATS[feature]['mean'], 
-                FRAUD_STATS[feature]['std']
+                FRAUD_STATS[feature]['std'],
+                size=n_fraud
             )
-        row['Fraud'] = 1 # synthetic feedback mechanism
-        data.append(row)
+        data[n_legit:, -1] = 1  # Fraud labels
     
     # Create DataFrame
-    df = pd.DataFrame(data)
+    data = pd.DataFrame(data, columns=all_features + ['Fraud'])
     
     # Ensure Amount is non-negative
-    df['Amount'] = np.maximum(df['Amount'], 0)
+    data['Amount'] = np.maximum(data['Amount'], 0)
     
     # Shuffle the data
-    #df = df.sample(frac=1).reset_index(drop=True)
-    
-    # Prepare features and labels
-    #X = df.drop(columns=['Fraud'])
-    #y = df['Fraud']
-    return df
+    #data = data.sample(frac=1)
+    return data
 
 
 
