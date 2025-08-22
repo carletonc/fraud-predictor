@@ -1,3 +1,11 @@
+"""
+Model training and hyperparameter optimization for fraud prediction.
+
+This module provides the complete training pipeline for the XGBoost fraud detection
+model, including data preprocessing, hyperparameter optimization using Optuna,
+model training, evaluation, and artifact saving.
+"""
+
 import json
 import joblib
 import os 
@@ -24,7 +32,22 @@ STATIC_PARAMS = {
 }
 
 def load_and_preprocess_data():
-    """Load data and create train/val/test splits with scaling."""
+    """Load data and create train/val/test splits with scaling.
+    
+    Loads the credit card fraud dataset, performs a three-way split into
+    training, validation, and test sets, and applies feature scaling using
+    StandardScaler fitted on the training data.
+    
+    Returns:
+        tuple: A 7-tuple containing:
+            - X_train_scaled (pandas.DataFrame): Scaled training features
+            - X_val_scaled (pandas.DataFrame): Scaled validation features  
+            - X_test_scaled (pandas.DataFrame): Scaled test features
+            - y_train (pandas.DataFrame): Training labels
+            - y_val (pandas.DataFrame): Validation labels
+            - y_test (pandas.DataFrame): Test labels
+            - scaler (StandardScaler): Fitted scaler for later use
+    """
     df = pd.read_csv(TRAIN_DATA_PATH).drop(columns=['Time'])
     print(df.shape)
     print(df['Class'].value_counts(normalize=True))
@@ -50,13 +73,30 @@ def load_and_preprocess_data():
     return X_train_scaled, X_val_scaled, X_test_scaled, y_train, y_val, y_test, scaler
 
 
-
-
-
 def optimize_hyperparameters(X_train_scaled, y_train):
-    """Run Optuna hyperparameter optimization."""
+    """Run Optuna hyperparameter optimization.
+    
+    Performs hyperparameter optimization using Optuna with TPE sampler.
+    Uses 5-fold cross-validation with PR-AUC as the optimization metric,
+    which is appropriate for imbalanced fraud detection datasets.
+    
+    Args:
+        X_train_scaled (pandas.DataFrame): Scaled training features.
+        y_train (pandas.DataFrame): Training labels.
+    
+    Returns:
+        optuna.Study: The completed study object containing best parameters
+            and optimization history.
+    """
     def objective(trial):
-        """Optuna objective function for hyperparameter optimization."""
+        """Optuna objective function for hyperparameter optimization.
+        
+        Args:
+            trial (optuna.Trial): The trial object for suggesting parameters.
+        
+        Returns:
+            float: Mean PR-AUC score across 5-fold cross-validation.
+        """
         # Hyperparameters to tune
         tuned_params = {
             'n_estimators': trial.suggest_int('n_estimators', 100, 1000),
@@ -105,7 +145,21 @@ def optimize_hyperparameters(X_train_scaled, y_train):
 
 
 def train_final_model(X_train_scaled, X_val_scaled, y_train, y_val, best_params):
-    """Train final model with best hyperparameters."""
+    """Train final model with best hyperparameters.
+    
+    Trains the final XGBoost model using the best hyperparameters found during
+    optimization, with early stopping on validation data.
+    
+    Args:
+        X_train_scaled (pandas.DataFrame): Scaled training features.
+        X_val_scaled (pandas.DataFrame): Scaled validation features.
+        y_train (pandas.DataFrame): Training labels.
+        y_val (pandas.DataFrame): Validation labels.
+        best_params (dict): Best hyperparameters from optimization.
+    
+    Returns:
+        xgb.XGBClassifier: Trained XGBoost model.
+    """
     print("\nTraining final model...")
     final_model = xgb.XGBClassifier(**STATIC_PARAMS, **best_params)
     final_model.fit(
@@ -117,7 +171,27 @@ def train_final_model(X_train_scaled, X_val_scaled, y_train, y_val, best_params)
 
 
 def evaluate_model(final_model, X_train_scaled, X_val_scaled, X_test_scaled, y_train, y_val, y_test):
-    """Evaluate model and print metrics."""
+    """Evaluate model and print metrics.
+    
+    Evaluates the trained model on training, validation, and test sets,
+    printing comprehensive classification reports and calculating ROC-AUC
+    and PR-AUC metrics.
+    
+    Args:
+        final_model (xgb.XGBClassifier): Trained XGBoost model.
+        X_train_scaled (pandas.DataFrame): Scaled training features.
+        X_val_scaled (pandas.DataFrame): Scaled validation features.
+        X_test_scaled (pandas.DataFrame): Scaled test features.
+        y_train (pandas.DataFrame): Training labels.
+        y_val (pandas.DataFrame): Validation labels.
+        y_test (pandas.DataFrame): Test labels.
+    
+    Returns:
+        tuple: A 3-tuple containing:
+            - test_roc_auc (float): ROC-AUC score on test set
+            - test_pr_auc (float): PR-AUC score on test set
+            - y_test_pred (numpy.ndarray): Predicted probabilities for test set
+    """
     # Predictions and metrics
     y_test_pred = final_model.predict_proba(X_test_scaled)[:, 1]
     test_roc_auc = roc_auc_score(y_test, y_test_pred)
@@ -141,7 +215,22 @@ def evaluate_model(final_model, X_train_scaled, X_val_scaled, X_test_scaled, y_t
 
 
 def create_visualizations(final_model, X_train_scaled, X_test_scaled, y_test, y_test_pred, test_pr_auc):
-    """Create and display model evaluation plots."""
+    """Create and display model evaluation plots.
+    
+    Generates comprehensive visualization plots including training curves,
+    precision-recall curves, threshold analysis, and feature importance.
+    
+    Args:
+        final_model (xgb.XGBClassifier): Trained XGBoost model.
+        X_train_scaled (pandas.DataFrame): Scaled training features.
+        X_test_scaled (pandas.DataFrame): Scaled test features.
+        y_test (pandas.DataFrame): Test labels.
+        y_test_pred (numpy.ndarray): Predicted probabilities for test set.
+        test_pr_auc (float): PR-AUC score on test set.
+    
+    Returns:
+        None: Displays matplotlib plots.
+    """
     precision, recall, _ = precision_recall_curve(y_test, y_test_pred)
     
     fig, axes = plt.subplots(4, 1, figsize=(15, 20))
@@ -191,7 +280,22 @@ def create_visualizations(final_model, X_train_scaled, X_test_scaled, y_test, y_
     
     
 def save_artifacts(final_model, scaler, y_test, X_test_scaled, test_roc_auc, test_pr_auc):
-    """Save model, scaler, and metrics to disk."""
+    """Save model, scaler, and metrics to disk.
+    
+    Saves the trained model, fitted scaler, and evaluation metrics to the
+    artifacts directory for later use in inference and monitoring.
+    
+    Args:
+        final_model (xgb.XGBClassifier): Trained XGBoost model.
+        scaler (StandardScaler): Fitted feature scaler.
+        y_test (pandas.DataFrame): Test labels.
+        X_test_scaled (pandas.DataFrame): Scaled test features.
+        test_roc_auc (float): ROC-AUC score on test set.
+        test_pr_auc (float): PR-AUC score on test set.
+    
+    Returns:
+        None: Saves files to disk.
+    """
     os.makedirs(ARTIFACTS_DIR, exist_ok=True)
     # Save preprocessing and model
     joblib.dump(scaler, SCALER_PATH) 
@@ -211,7 +315,15 @@ def save_artifacts(final_model, scaler, y_test, X_test_scaled, test_roc_auc, tes
 
 
 def train_and_serialize():
-    """Main training pipeline."""
+    """Main training pipeline.
+    
+    Orchestrates the complete training workflow including data loading,
+    hyperparameter optimization, model training, evaluation, and artifact
+    saving. Uses pre-determined best hyperparameters for reproducibility.
+    
+    Returns:
+        None: Trains model and saves artifacts to disk.
+    """
     # Load and preprocess data
     X_train_scaled, X_val_scaled, X_test_scaled, y_train, y_val, y_test, scaler = load_and_preprocess_data()
     

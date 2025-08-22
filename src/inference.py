@@ -1,3 +1,11 @@
+"""
+Model inference and monitoring for fraud prediction.
+
+This module provides functions for making predictions with the trained fraud
+detection model, calculating feature drift metrics, and monitoring model
+performance in production-like scenarios.
+"""
+
 import joblib
 import json
 import os
@@ -10,33 +18,19 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import precision_score, recall_score
 from scipy.stats import ks_2samp, wasserstein_distance, entropy
 
-from src.constants import TRAIN_DATA_PATH
+from src.constants import SEED, THRESHOLD, TOP_FEATURES, TRAIN_DATA_PATH, SCALER_PATH, MODEL_PATH, MODEL_METRICS_PATH
 from src.data import generate_fraud_data, get_random_fraud_rate
 
-# Constants
-TRAIN_DATA_PATH = 'data/raw/creditcard.csv'
-SCALER_PATH = 'artifacts/scaler.pkl'
-MODEL_PATH = 'artifacts/best_xgboost_model.json'
-MODEL_METRICS_PATH = 'artifacts/test_metrics.json'
-THRESHOLD = 0.77
 
-# For streamlit
-TOP_FEATURES = ['V14', 'V4', 'V7']
-
-def get_train_data(SEED=42):
-    """
-    Loads the creditcard dataset from TRAIN_DATA_PATH and performs a three-way split:
-    Train/Val/Test. Returns X_train, the training data.
+def get_train_data():
+    """Load training data for distribution comparison.
     
-    Parameters
-    ----------
-    SEED : int, optional
-        The random seed for the data split. Defaults to 42.
+    Loads the credit card dataset from TRAIN_DATA_PATH and performs a three-way
+    split to extract the training portion for use as a reference distribution
+    in drift detection.
     
-    Returns
-    -------
-    X_train : pandas.DataFrame
-        The training data.
+    Returns:
+        pandas.DataFrame: Training features (X_train) for distribution comparison.
     """
     df = pd.read_csv(TRAIN_DATA_PATH).drop(columns=['Time'])
     
@@ -54,20 +48,19 @@ def get_train_data(SEED=42):
 
 
 def predict(X): 
+    """Predict fraud labels for input features.
+    
+    Loads the pre-trained XGBoost model and scaler, applies feature scaling,
+    and makes predictions using the configured threshold for fraud detection.
+    
+    Args:
+        X (pandas.DataFrame): Input features for prediction.
+    
+    Returns:
+        numpy.ndarray: Array of predicted labels where 1 indicates fraud
+            and 0 indicates non-fraud.
     """
-    Predicts fraud labels for the given input features using a pre-trained XGBoost model.
-
-    Parameters
-    ----------
-    X : pandas.DataFrame
-        The input features for prediction.
-
-    Returns
-    -------
-    numpy.ndarray
-        An array of predicted labels where 1 indicates fraud and 0 indicates non-fraud.
-    """
-    # load scaler & model
+    # load artifacts
     scaler = joblib.load(SCALER_PATH) 
     model_xgb = xgb.XGBClassifier() 
     model_xgb.load_model(MODEL_PATH) 
@@ -77,29 +70,29 @@ def predict(X):
     return y_pred 
 
 
-def calculate_drift_metrics(X_test, X_live, bins=10):
-    """
-    Calculate KS, JSD, Wasserstein, and PSI between two datasets.
-
-    Parameters
-    ----------
-    X_test : array-like
-        Reference dataset (e.g., test set feature column).
-    X_live : array-like
-        Live dataset to compare against reference.
-    bins : int
-        Number of bins for PSI & JSD histograms.
-
-    Returns
-    -------
-    dict
-        {
-            "ks_stat": float,
-            "ks_pvalue": float,
-            "jsd": float,
-            "wasserstein": float,
-            "psi": float
-        }
+def calculate_drift_metrics(X_test, X_live, bins=20):
+    """Calculate distribution drift metrics between reference and live datasets.
+    
+    Computes multiple statistical measures to quantify the difference between
+    feature distributions: Kolmogorov-Smirnov test, Jensen-Shannon Divergence,
+    Wasserstein distance, and Population Stability Index.
+    
+    Args:
+        X_test (array-like): Reference dataset (e.g., test set feature column).
+        X_live (array-like): Live dataset to compare against reference.
+        bins (int): Number of bins for histogram-based metrics (PSI & JSD).
+            Defaults to 20.
+    
+    Returns:
+        dict: Dictionary containing drift metrics:
+            - ks_stat (float): Kolmogorov-Smirnov statistic
+            - ks_pvalue (float): KS test p-value
+            - jsd (float): Jensen-Shannon Divergence (bounded [0, 1])
+            - wasserstein (float): Wasserstein distance
+            - psi (float): Population Stability Index
+            - bins (list): Histogram bin edges
+            - test_hist (list): Reference dataset histogram
+            - live_hist (list): Live dataset histogram
     """
     # Drop NaNs
     X_test = pd.Series(X_test).dropna().values
@@ -140,25 +133,20 @@ def calculate_drift_metrics(X_test, X_live, bins=10):
 
 
 def calculate_accuracy_metrics(y_true, y_pred, test_json_path):
-    """
-    Compare online classification metrics to gold (test set) metrics.
-
-    Parameters
-    ----------
-    y_true : array-like
-        Ground truth labels (binary 0/1).
-    y_pred : array-like
-        Model predictions (binary 0/1).
-    gold_json_path : str
-        Path to JSON file containing gold metrics.
-
-    Returns
-    -------
-    dict
-        {
-            "online": {...},
-            "offline_test": {...}
-        }
+    """Compare online classification metrics to offline test metrics.
+    
+    Loads gold standard metrics from the test set and compares them to
+    current online performance metrics, focusing on precision and recall.
+    
+    Args:
+        y_true (array-like): Ground truth labels (binary 0/1).
+        y_pred (array-like): Model predictions (binary 0/1).
+        test_json_path (str): Path to JSON file containing offline test metrics.
+    
+    Returns:
+        dict: Dictionary containing:
+            - online (dict): Current online performance metrics
+            - offline_test (dict): Gold standard offline test metrics
     """
     # --- Load gold metrics ---
     with open(test_json_path, "r") as f:
@@ -194,21 +182,18 @@ def calculate_accuracy_metrics(y_true, y_pred, test_json_path):
 
 
 def single_run():
-    """
-    Single run of the data generation and inference pipeline.
-
-    This function is supposed to be called repeatedly to simulate a stream of data. It
-    generates a unique run ID, generates new "live" data, checks for feature drift w.r.t.
-    the training data, and documents online metrics.
-
-    This function does not return anything. Instead, it appends results to the following
-    global variables:
-    - LIVE_DATA: a list of dictionaries, each containing a run ID and the corresponding
-      live data as a Pandas DataFrame
-    - LIVE_FEATURE_DRIFT: a list of dictionaries, each containing a run ID and the
-      corresponding feature drift metrics as a dictionary with feature names as keys
-    - LIVE_METRICS: a list of dictionaries, each containing a run ID and the
-      corresponding online metrics as a dictionary
+    """Execute a single monitoring run.
+    
+    Performs one complete cycle of the monitoring pipeline: generates new
+    synthetic data, checks for feature drift against training data, makes
+    predictions, and documents online metrics. Results are stored in
+    Streamlit session state for visualization.
+    
+    This function simulates a production monitoring scenario where new data
+    arrives in batches and model performance is continuously tracked.
+    
+    Returns:
+        None: Results are stored in st.session_state variables.
     """
     # generate run ID
     run_id = uuid.uuid4()
@@ -237,18 +222,17 @@ def single_run():
 
     
   
-def full_run(limit = 14):
-    """
-    Repeatedly call `single_run` to generate a sequence of runs.
-
-    Parameters
-    ----------
-    limit : int
-        The number of runs to perform. Defaults to 14.
-
-    Returns
-    -------
-    None
+def full_run(limit=14):
+    """Execute multiple monitoring runs.
+    
+    Repeatedly calls single_run to generate a sequence of monitoring cycles,
+    simulating continuous model monitoring over time.
+    
+    Args:
+        limit (int): Number of runs to perform. Defaults to 14.
+    
+    Returns:
+        None: Results are stored in st.session_state variables.
     """
     for i in range(limit):
         single_run()

@@ -1,12 +1,28 @@
+"""
+Constants and configuration for the fraud prediction system.
+
+This module contains all the constants, file paths, and statistical data used
+throughout the fraud prediction application, including model thresholds,
+data paths, and pre-computed statistics for legitimate and fraudulent transactions.
+"""
+
+ABOUT = """This app demonstrates ML model monitoring, including accuracy tracking and feature drift detection, under the assumption that we have a reliable feedback loop to attribute labels to production predictions. 
+
+Accuracy is compared between offline benchmarks and online production metrics at a stricter threshold (0.77), while feature drift is measured using Jensen–Shannon Divergence (JSD) to compare online feature distributions against the offline baseline.
+
+**To-Do** -- *add false-negative monitoring, a critical component to fraud monitoring.*
+
+The model was trained on Kaggle's credit card fraud prediction dataset -- https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud."""
 
 SEED = 42
+THRESHOLD = 0.77
 DATA_DIR = 'data/raw'
 TRAIN_DATA_PATH = 'data/raw/creditcard.csv'
 ARTIFACTS_DIR = 'artifacts'
 SCALER_PATH = 'artifacts/scaler.pkl'
 MODEL_PATH = 'artifacts/best_xgboost_model.json'
 MODEL_METRICS_PATH = 'artifacts/test_metrics.json'
-
+TOP_FEATURES = ['V14', 'V4', 'V7']
 
 # Stats for legitimate transactions (Class 0)
 NON_FRAUD_STATS = {

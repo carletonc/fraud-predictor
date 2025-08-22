@@ -1,3 +1,10 @@
+"""
+Main Streamlit application for fraud detection monitoring.
+
+This module serves as the entry point for the fraud detection dashboard,
+orchestrating data download, model training, and the monitoring interface.
+"""
+
 import streamlit as st
 import os
 import numpy as np
@@ -27,7 +34,15 @@ for val in ['live_data', 'live_metrics', 'live_feature_drift']:
 
 
 def main():
-    """Main application entry point"""
+    """Main application entry point.
+    
+    Initializes the fraud detection dashboard, ensures required data and
+    model artifacts are available, and displays the monitoring interface.
+    Handles data download and model training if needed.
+    
+    Returns:
+        None: Updates Streamlit interface.
+    """
     st.title("🎯 Fraud Detection Dashboard")
     header_buttons()
     

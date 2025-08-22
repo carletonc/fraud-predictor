@@ -1,3 +1,11 @@
+"""
+Data generation and management utilities for fraud prediction.
+
+This module provides functions for downloading credit card fraud data from Kaggle,
+generating synthetic fraud data based on statistical distributions, and
+managing data loading operations.
+"""
+
 import os
 import numpy as np
 import pandas as pd
@@ -8,7 +16,14 @@ from src.constants import DATA_DIR, TRAIN_DATA_PATH, FRAUD_STATS, NON_FRAUD_STAT
 
 
 def download_creditcard_data():
-    """Download the credit card fraud dataset from Kaggle using .env credentials."""
+    """Download the credit card fraud dataset from Kaggle using .env credentials.
+    
+    Downloads the credit card fraud dataset from Kaggle and saves it to the
+    data directory. Requires Kaggle API credentials to be set in a .env file.
+    
+    Returns:
+        None: Downloads data to DATA_DIR directory.
+    """
     # Load environment variables from .env file
     load_dotenv()
     # Authenticate and download
@@ -25,15 +40,18 @@ def download_creditcard_data():
 
 
 def get_random_fraud_rate(base_rate=0.001727, scale=10000):
-    """
-    Returns a random fraud rate drawn from a beta distribution.
+    """Generate a random fraud rate drawn from a beta distribution.
     
     The distribution is parameterized by the base rate (the mean of the distribution)
     and a scale parameter that controls the variance of the distribution.
     
-    Parameters:
-    base_rate (float): The mean of the distribution (default is 0.001727)
-    scale (float): The scale parameter of the distribution (default is 10000)
+    Args:
+        base_rate (float): The mean of the distribution. Defaults to 0.001727.
+        scale (float): The scale parameter of the distribution. Higher scale results
+            in lower variance. Defaults to 10000.
+    
+    Returns:
+        float: A random fraud rate drawn from the beta distribution.
     """
     # scale controls the variance (higher scale = lower variance)
     alpha = base_rate * scale
@@ -42,15 +60,22 @@ def get_random_fraud_rate(base_rate=0.001727, scale=10000):
 
 
 def generate_fraud_data(n_samples, fraud_rate=get_random_fraud_rate()):
-    """
-    Generate synthetic fraud detection data based on the provided dataset statistics.
+    """Generate synthetic fraud detection data based on provided dataset statistics.
     
-    Parameters:
-    n_samples (int): Number of samples to generate
-    fraud_rate (float): Proportion of fraudulent transactions (default: 0.001727)
+    Generates synthetic data that mimics the statistical properties of the
+    original credit card fraud dataset, including feature distributions for
+    both legitimate and fraudulent transactions.
+    
+    Args:
+        n_samples (int): Number of samples to generate. If None, generates a
+            random number between 100,000 and 200,000.
+        fraud_rate (float): Proportion of fraudulent transactions. 
+            Defaults to a random rate from get_random_fraud_rate().
     
     Returns:
-    pandas.DataFrame: Generated data with V1-V28 features and Amount
+        pandas.DataFrame: Generated data with V1-V28 features, Amount, and Fraud
+            label column. The data is shuffled and includes both legitimate (0)
+            and fraudulent (1) transactions.
     """
     # If n_samples is None, randomly generate a sample size
     if n_samples is None:

@@ -1,20 +1,30 @@
+"""
+Streamlit user interface for fraud prediction monitoring.
+
+This module provides the web-based interface for monitoring fraud detection
+model performance, including real-time metrics visualization, feature drift
+analysis, and interactive data generation controls.
+"""
+
 import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 
+from src.constants import ABOUT, TOP_FEATURES
 from src.inference import single_run
 
-ABOUT = """This app demonstrates ML model monitoring, including accuracy tracking and feature drift detection, under the assumption that we have a reliable feedback loop to attribute labels to production predictions. 
-
-Accuracy is compared between offline benchmarks and online production metrics at a stricter threshold (0.77), while feature drift is measured using Jensen–Shannon Divergence (JSD) to compare online feature distributions against the offline baseline.
-
-**To-Do** -- *add false-negative monitoring, a critical component to fraud monitoring.*
-
-The model was trained on Kaggle's credit card fraud prediction dataset -- https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud."""
 
 def header_buttons():
+    """Display header section with app description and control buttons.
+    
+    Shows the application description and provides buttons for generating
+    new data batches and clearing all stored data from the session state.
+    
+    Returns:
+        None: Updates Streamlit interface elements.
+    """
     st.write(ABOUT)
     
     col1, col2, col3, col4 = st.columns([1,1,1, 1]) 
@@ -30,9 +40,31 @@ def header_buttons():
             for key in st.session_state.keys():
                  del st.session_state[key]
             st.rerun()
+            
+    with col3:
+        #st.session_state['history_len'] = st.number_input(
+        #    'History Length', 
+        #    min_value=7, 
+        #    max_value=28, 
+        #    value=14,
+            #width='stretch'
+       #    )
+        pass
 
 
 def plot_online_metrics(limit=14):
+    """Plot online model performance metrics over time.
+    
+    Creates three interactive charts showing precision, recall, and sample
+    statistics over multiple monitoring batches. Compares online performance
+    to offline test set benchmarks.
+    
+    Args:
+        limit (int): Number of most recent batches to display. Defaults to 14.
+    
+    Returns:
+        None: Displays Plotly charts in Streamlit interface.
+    """
     st.markdown("---")
     st.subheader("Model Monitoring")
     
@@ -150,7 +182,19 @@ def plot_online_metrics(limit=14):
         st.plotly_chart(fig, use_container_width=True)
         
 
-def plot_feature_drift(limit=14, features=['V14', 'V4', 'V7']):
+def plot_feature_drift(limit=14):
+    """Plot feature drift analysis over time.
+    
+    Creates interactive visualizations showing how feature distributions
+    change over monitoring batches, including Jensen-Shannon Divergence
+    trends and histogram overlays comparing offline vs online distributions.
+    
+    Args:
+        limit (int): Number of most recent batches to display. Defaults to 14.
+    
+    Returns:
+        None: Displays Plotly charts in Streamlit interface.
+    """
     st.markdown("---")
     st.subheader("Feature Drift")
 
@@ -162,10 +206,19 @@ def plot_feature_drift(limit=14, features=['V14', 'V4', 'V7']):
         index=[i for i in range(min(len(st.session_state['live_feature_drift']), limit))]
     )
 
-    cols = st.columns(len(features))
+    cols = st.columns(len(TOP_FEATURES))
     latest_idx = df.index[-1]
     
     def get_step_points(bin_edges, counts):
+        """Convert histogram data to step plot format.
+        
+        Args:
+            bin_edges (list): Histogram bin edge values.
+            counts (list): Histogram count values.
+        
+        Returns:
+            tuple: (x_coordinates, y_coordinates) for step plot.
+        """
         x = []
         y = []
         for i in range(len(counts)):
@@ -173,7 +226,7 @@ def plot_feature_drift(limit=14, features=['V14', 'V4', 'V7']):
             y.extend([counts[i], counts[i]])
         return x, y
 
-    for i, feature in enumerate(features):
+    for i, feature in enumerate(TOP_FEATURES):
         col = cols[i]
 
         jsd_col = f"{feature}_jsd"
