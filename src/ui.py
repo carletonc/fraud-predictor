@@ -6,25 +6,29 @@ import plotly.express as px
 
 from src.inference import single_run
 
+ABOUT = """This app demonstrates ML model monitoring, including accuracy tracking and feature drift detection, under the assumption that we have a reliable feedback loop to attribute labels to production predictions. 
+
+Accuracy is compared between offline benchmarks and online production metrics at a stricter threshold (0.77), while feature drift is measured using Jensen–Shannon Divergence (JSD) to compare online feature distributions against the offline baseline.
+
+**To-Do** -- *add false-negative monitoring, a critical component to fraud monitoring.*
+
+The model was trained on Kaggle's credit card fraud prediction dataset -- https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud."""
+
 def header_buttons():
-    col1, col2, col3 = st.columns([2, 1, 1]) 
+    st.write(ABOUT)
+    
+    col1, col2, col3, col4 = st.columns([1,1,1, 1]) 
 
     with col1:
-        st.write(
-            "This app simulates live fraud monitoring based on the Credit Card Fraud Detection dataset found on Kaggle -- https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud."
-            )
-
-    with col2:
         if st.button("Generate New Batch"):
             single_run()
             #st.rerun() 
 
-    with col3:
+    with col2:
         if st.button("Clear All Data"):
             # Clear session state or any data here
             for key in st.session_state.keys():
                  del st.session_state[key]
-                 
             st.rerun()
 
 
