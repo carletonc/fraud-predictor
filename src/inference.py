@@ -85,7 +85,7 @@ def predict(X):
     return y_pred 
 
 
-@st.cache_data(show_spinner=False)
+#@st.cache_data(show_spinner=False)
 def calculate_drift_metrics(X_test, X_live, bins=20):
     """Calculate distribution drift metrics between reference and live datasets.
     
@@ -173,7 +173,7 @@ def calculate_drift_metrics(X_test, X_live, bins=20):
     return {k: float(v) if isinstance(v, (np.floating, float)) else v for k, v in output.items()}
 
 
-@st.cache_data(show_spinner=False)
+#@st.cache_data(show_spinner=False)
 def calculate_accuracy_metrics(y_true, y_pred, test_json_path):
     """Compare online classification metrics to offline test metrics with caching.
     
