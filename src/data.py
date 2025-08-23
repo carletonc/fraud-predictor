@@ -60,7 +60,7 @@ def get_random_fraud_rate(base_rate=0.001727, scale=10000):
     return np.random.beta(alpha, beta)
 
 
-@st.cache_data(show_spinner=False)
+#@st.cache_data(show_spinner=False)
 def generate_fraud_data(n_samples, fraud_rate=None):
     """Generate synthetic fraud detection data based on provided dataset statistics.
     

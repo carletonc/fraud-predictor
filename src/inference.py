@@ -22,7 +22,7 @@ from src.constants import SEED, THRESHOLD, TOP_FEATURES, TRAIN_DATA_PATH, SCALER
 from src.data import generate_fraud_data, get_random_fraud_rate
 
 
-@st.cache_data(show_spinner=False)
+#@st.cache_data(show_spinner=False)
 def load_training_data():
     """Load training data for distribution comparison with caching.
     
@@ -48,7 +48,7 @@ def load_training_data():
     return X_train
 
 
-@st.cache_resource(show_spinner=False)
+#@st.cache_resource(show_spinner=False)
 def load_model_and_scaler():
     """Load and cache the pre-trained model and scaler.
     
