@@ -52,7 +52,7 @@ def header_buttons():
         pass
 
 
-@st.cache_data
+#@st.cache_data
 def process_metrics_data(metrics_data, limit):
     """Process and cache metrics data for plotting.
     
@@ -75,7 +75,7 @@ def process_metrics_data(metrics_data, limit):
     )
 
 
-@st.cache_data
+#@st.cache_data
 def process_drift_data(drift_data, limit):
     """Process and cache drift data for plotting.
     
